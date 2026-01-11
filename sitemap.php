@@ -1,25 +1,50 @@
- <?php
-header("Content-Type: text/xml");
+<?php
+header("Content-Type: text/xml; charset=utf-8");
 
-// Ubah brand_list.txt sesuai dengan file list anda
-$brandList = file("listnew.txt", FILE_IGNORE_NEW_LINES);
+// --- 1. LOGIKA AUTO-DETECT LOKASI FILE ---
+// Cek protokol (HTTP atau HTTPS)
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https://" : "http://";
 
-$sitemap = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
-$sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
+// Ambil path folder tempat file ini berada sekarang
+// Contoh: jika file di /public_html/folder1/sitemap.php, maka hasilnya: /folder1/
+$current_dir = str_replace(basename($_SERVER['SCRIPT_NAME']), "", $_SERVER['SCRIPT_NAME']);
 
-foreach ($brandList as $brand) {
-    $url = "https://iptapsel.ac.id/dosen/?jurusan=$brand";
-    $sitemap .= '<url>' . PHP_EOL;
-    $sitemap .= '<loc>' . $url . '</loc>' . PHP_EOL;
-    $sitemap .= '<lastmod>' . date('c', time()) . '</lastmod>' . PHP_EOL;
-    $sitemap .= '<priority>0.8</priority>' . PHP_EOL;
-    $sitemap .= '</url>' . PHP_EOL;
-}
+// Gabungkan menjadi URL Utuh ke folder ini
+// Hasil: https://domainanda.com/folder1/
+$root_url = $protocol . $_SERVER['HTTP_HOST'] . $current_dir;
 
-$sitemap .= '</urlset>' . PHP_EOL;
+// URL Target untuk index.php di folder yang sama
+$target_url = $root_url . "index.php?id=";
+$file_list  = "listnew.txt";
 
-// Simpan sitemap sebagai file sitemap.xml
-file_put_contents('sitemap.xml', $sitemap);
-
-echo $sitemap;
+echo '<?xml version="1.0" encoding="UTF-8"?>';
 ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc><?= $root_url; ?>index.php</loc>
+        <lastmod><?= date('Y-m-d'); ?></lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <?php
+    // Baca file listnew.txt di folder yang sama
+    if (file_exists($file_list)) {
+        $lines = file($file_list, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        
+        foreach ($lines as $line) {
+            $slug = trim($line);
+            if (!empty($slug)) {
+    ?>
+    <url>
+        <loc><?= $target_url . htmlspecialchars($slug); ?></loc>
+        <lastmod><?= date('Y-m-d'); ?></lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <?php
+            }
+        }
+    }
+    ?>
+</urlset>
